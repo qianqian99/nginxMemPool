@@ -2,7 +2,7 @@
 #include <cassert>
 #include "./malloc.h"
 #include <cstdlib>
-NginxMalloc::NginxMalloc(size_t data_size) 
+NginxMalloc::NginxMalloc(size_t data_size) : large_sz_limit(data_size/8) 
 {
     size_t total_sz = size + sizeof(NginxMalloc);
     Pool *pool = (Pool *)malloc(total_sz);
@@ -12,7 +12,6 @@ NginxMalloc::NginxMalloc(size_t data_size)
     pool->msg->next = NULL;
     pool->msg->failed = 0;
 
-    pool->left_size = data_size;
     pool->current = pool;
     pool->large = NULL; 
 
@@ -20,9 +19,19 @@ NginxMalloc::NginxMalloc(size_t data_size)
 }
 void *NginxMalloc::allocate(size_t n)
 {
-    if (n <= _pool->left_size)
+    if (n <= large_sz_limit)
     {
-
+        ControlMsg *p = static_cast<ControlMsg *>(_pool);
+        while (p != NULL)
+        {
+            size_t left_sz = getSize(p->end, p->last);
+            /*can get mem*/
+            if (left_sz >= n)
+            {
+                //todo
+            }
+            p = p->next;
+        }
     }
     return large_malloc(n);
 }
@@ -33,12 +42,31 @@ void *NginxMalloc::large_malloc(size_t n)
     int n = 0;
     for (LargeMalloc *p=_pool->large; p!=NULL; p=p->next)
     {
-        if (p->alloc == NULL) p->alloc = newMem;
+        if (p->alloc == NULL) 
+        {
+            p->alloc = newMem;
+            return newMem;
+        }
         if (++n > 3) break;
     }
     LargeMalloc *newLarge = (LargeMalloc *)allocate(sizeof(LargeMalloc));
-    assert(newLarge != NULL);
+    if (newLarge == NULL) 
+    {
+        large_free(newMem);
+        return NULL;
+    }
     newLarge->alloc = newMem;
     newLarge->next = _pool->large;
     _pool->large = newLarge;
+    return newMem;
+}
+void NginxMalloc::large_free(void *arg)
+{
+    for (LargeMalloc *p=_pool->large; p!=NULL; p=p->next)
+    {
+        if (arg == p->alloc) {
+            free(arg);
+            p->alloc = NULL;
+        }
+    }
 }
