@@ -4,7 +4,6 @@
 using namespace std;
 int main(int argc, char *argv[])
 {
-    NginxMalloc MemPool;
     int total = 0;
     for (int i=0; i<30240000; ++i)
     {
@@ -16,7 +15,7 @@ int main(int argc, char *argv[])
                   << " time is " << i+1 
                   << " total size is " << total << endl;
 #endif
-        char *p = (char *)MemPool.allocate(size);
+        char *p = (char *)malloc(size);
         *p++ = 'a';
     }
     return 0;

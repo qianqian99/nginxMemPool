@@ -1,0 +1,5 @@
+./main  3.56s user 4.69s system 8% cpu 1:35.63 total
+./demo  2.93s user 4.57s system 7% cpu 1:35.57 total
+30240000
+./main  11.45s user 6.68s system 22% cpu 1:20.50 total
+./demo  4.52s user 4.33s system 40% cpu 21.791 total

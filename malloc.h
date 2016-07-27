@@ -1,3 +1,8 @@
+#include <iostream>
+class NginxMalloc;
+class LargeMalloc;
+class ControlMsg;
+class Pool;
 class LargeMalloc
 {
     public:
@@ -9,8 +14,12 @@ class ControlMsg
     public:
         char *last;
         char *end;
-        NginxMalloc *next;
+        ControlMsg *next;
         char failed;
+        int getSize()
+        {
+            return end - last;
+        }
 };
 class Pool
 {
@@ -29,6 +38,6 @@ class NginxMalloc
         void *allocate(size_t n);
         void *large_malloc(size_t n);
         void large_free(void *p);
-        void *allocate_block(size_t data_size=1024, size_t n);
+        void *allocate_block(size_t n, size_t data_size=1024);
         ~NginxMalloc();
 };
