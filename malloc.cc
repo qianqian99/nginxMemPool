@@ -21,19 +21,47 @@ void *NginxMalloc::allocate(size_t n)
 {
     if (n <= large_sz_limit)
     {
-        ControlMsg *p = static_cast<ControlMsg *>(_pool);
+        ControlMsg *p = static_cast<ControlMsg *>(_pool->current);
         while (p != NULL)
         {
-            size_t left_sz = getSize(p->end, p->last);
+            size_t left_sz = p->getSize(end, last);
             /*can get mem*/
             if (left_sz >= n)
             {
-                //todo
+                char *res = p->last;
+                p->last += n;
+                return res;
             }
             p = p->next;
         }
+        return allocate_block(n);
     }
     return large_malloc(n);
+}
+void *NginxMalloc::allocate_block(size_t data_size=1024, size_t n)
+{
+    ControlMsg *p = static_cast<ControlMsg *>(_pool->current);
+    while (p->next != NULL) 
+    {
+        if (p->failed++ > 4) 
+        {
+            _pool->current = p->next;
+        }
+        p = p->next;
+    }
+    ControlMsg *newBlock = (ControlMsg *)malloc(sizeof(ControlMsg)+data_size);
+    assert(newBlock != NULL);
+    if (_pool->current == NULL) 
+    {
+        _pool->current = newBlock;
+    }
+    p->next = newBlock;
+    newBlock->failed = 0;
+    newBlock->next = NULL;
+    newBlock->end = (char *)newBlock + sizeof(ControlMsg) + data_size;
+    char *res = newBlock->last;
+    newBlock->last = (char *)newBlock + n;
+    return res;
 }
 void *NginxMalloc::large_malloc(size_t n)
 {
@@ -68,5 +96,27 @@ void NginxMalloc::large_free(void *arg)
             free(arg);
             p->alloc = NULL;
         }
+    }
+}
+NginxMalloc::~NginxMalloc()
+{
+    /*free large list*/
+    LargeMalloc *plarge = _pool->large;
+    while (plarge != NULL) 
+    {
+        if (plarge->alloc != NULL) 
+        {
+            free(plarge->alloc);
+            plarge->alloc = NULL;
+        }
+        plarge = plarge->next;
+    }
+    ControlMsg *ppool = _pool->msg.next;
+    free(_pool);
+    while (ppool != NULL) 
+    {
+        void *tmp = ppool;
+        ppool = ppool->next;
+        free(tmp);
     }
 }

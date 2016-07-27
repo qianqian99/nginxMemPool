@@ -29,4 +29,6 @@ class NginxMalloc
         void *allocate(size_t n);
         void *large_malloc(size_t n);
         void large_free(void *p);
+        void *allocate_block(size_t data_size=1024, size_t n);
+        ~NginxMalloc();
 };
